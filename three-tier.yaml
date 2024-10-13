@@ -1,0 +1,168 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "Three tier architecture with CloudFormation"
+Parameters:
+    KeyNameValue:
+        Description: "Key name used for SSH access to bastion host"
+        Type: AWS::EC2::KeyPair::KeyName
+        ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    publicIPUserValue:
+        Description: "Public IP enabled to SSH access on bastion host"
+        Type: String
+
+Resources:
+    ThreeTierVPC:
+        Type: AWS::EC2::VPC
+        Properties:
+            CidrBlock: "10.0.0.0/16"
+            EnableDnsHostnames: true
+            EnableDnsSupport: true
+            Tags:
+                - Value: ThreeTierVPC
+                  Key: Name
+
+    InternetGateway:
+        Type: AWS::EC2::InternetGateway
+        Properties:
+            Tags:
+                - Value: ThreeTierVPC-IGW
+                  Key: Name
+
+    AttachGateway:
+        Type: AWS::EC2::VPCGatewayAttachment
+        Properties:
+            VpcId: !Ref ThreeTierVPC
+            InternetGatewayId: !Ref InternetGateway
+
+    PublicSubnet1AZa:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref ThreeTierVPC
+            CidrBlock: "10.0.1.0/24"
+            AvailabilityZone: !Select [0, !GetAZs ""]
+            MapPublicIpOnLaunch: true
+            Tags:
+                - Value: PublicSubnet1AZa
+                  Key: Name
+
+    PublicSubnet2AZb:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref ThreeTierVPC
+            CidrBlock: "10.0.2.0/24"
+            AvailabilityZone: !Select [1, !GetAZs ""]
+            MapPublicIpOnLaunch: true
+            Tags:
+                - Value: PublicSubnet2AZb
+                  Key: Name
+
+    PublicRouteTable:
+        Type: AWS::EC2::RouteTable
+        Properties:
+            VpcId: !Ref ThreeTierVPC
+            Tags:
+                - Value: PublicRouteTable
+                  Key: Name
+
+    PublicRoute:
+        Type: AWS::EC2::Route
+        DependsOn: AttachGateway
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            DestinationCidrBlock: "0.0.0.0/0"
+            GatewayId: !Ref InternetGateway
+
+    PublicSubnet1AZaRouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref PublicSubnet1AZa
+            RouteTableId: !Ref PublicRouteTable
+
+    PublicSubnet2AZbRouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            SubnetId: !Ref PublicSubnet2AZb
+            RouteTableId: !Ref PublicRouteTable
+
+    # Application Private Subnets
+    AppPrivateSubnet1AZa:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref ThreeTierVPC
+            CidrBlock: "10.0.3.0/24"
+            AvailabilityZone: !Select [0, !GetAZs ""]
+            Tags:
+                - Value: AppPrivateSubnet1AZa
+                  Key: Name
+
+    AppPrivateSubnet2AZb:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref ThreeTierVPC
+            CidrBlock: "10.0.4.0/24"
+            AvailabilityZone: !Select [1, !GetAZs ""]
+            Tags:
+                - Value: AppPrivateSubnet2AZb
+                  Key: Name
+
+    # Database Private Subnets
+    DataPrivateSubnet1AZa:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref ThreeTierVPC
+            CidrBlock: "10.0.5.0/24"
+            AvailabilityZone: !Select [0, !GetAZs ""]
+            Tags:
+                - Value: DataPrivateSubnet1AZa
+                  Key: Name
+
+    DataPrivateSubnet2AZb:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref ThreeTierVPC
+            CidrBlock: "10.0.6.0/24"
+            AvailabilityZone: !Select [1, !GetAZs ""]
+            Tags:
+                - Value: DataPrivateSubnet2AZb
+                  Key: Name
+
+    # Bastion Host
+    BastionHost:
+        Type: AWS::EC2::Instance
+        Properties:
+            InstanceType: t2.micro
+            ImageId: ami-0fff1b9a61dec8a5f
+            SubnetId: !Ref PublicSubnet1AZa
+            SecurityGroupIds:
+                - !Ref BastionSG
+            KeyName: !Ref KeyNameValue
+            Tags:
+                - Value: BastionHost
+                  Key: Name
+
+    BastionSG:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            GroupDescription: "Enable SSH access"
+            VpcId: !Ref ThreeTierVPC
+            SecurityGroupIngress:
+                - IpProtocol: tcp
+                  FromPort: 22
+                  ToPort: 22
+                  CidrIp: !Ref publicIPUserValue
+
+Outputs:
+    ThreeTierVpcIdSOut:
+        Description: "VPC ID, CIDR 10.0.0.0/16"
+        Value: !Ref ThreeTierVPC
+        Export:
+            Name: ThreeTierVPCId
+    PublicSubnet1AZaOut:
+        Description: "Public subnet 1 AZ A, CIDR 10.0.1.0/24"
+        Value: !Ref PublicSubnet1AZa
+        Export:
+            Name: PublicSubnet1AZaId
+    PublicSubnet2AZbOut:
+        Description: "Public subnet 2 AZ B, CIDR 10.0.2.0/24"
+        Value: !Ref PublicSubnet2AZb
+        Export:
+            Name: PublicSubnet2AZbId
