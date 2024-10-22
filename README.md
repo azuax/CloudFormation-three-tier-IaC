@@ -19,5 +19,7 @@ The architectural diagram is as follows:
 
 ![Three Tiear App Architectural Diagram](assets/arch-three-tier-diagram.png)
 
-If you are interested in follow along the creation of this architecture, please check my blog post on Medium:
-[Step by Step Three-tier application infrastructure using AWS CloudFormation - Part 1](https://azuax.medium.com/step-by-step-three-tier-application-infrastructure-using-aws-cloudformation-part-1-54b161aecf5d)
+If you are interested in follow along the creation of this architecture, please check my two-part blog post on Medium:
+
+-   [Step by Step Three-tier application infrastructure using AWS CloudFormation - Part 1](https://azuax.medium.com/step-by-step-three-tier-application-infrastructure-using-aws-cloudformation-part-1-54b161aecf5d)
+-   [Step By Step Three Tier Application Using AWS CloudFormation — Part 2](https://azuax.medium.com/step-by-step-three-tier-application-using-aws-cloudformation-part-2-544f8a4764a7)
