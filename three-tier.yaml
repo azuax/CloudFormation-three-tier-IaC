@@ -135,6 +135,19 @@ Resources:
             SecurityGroupIds:
                 - !Ref BastionSG
             KeyName: !Ref KeyNameValue
+            UserData:
+                Fn::Base64: !Sub |
+                    #!/bin/bash
+                    yum update -y
+                    yum install -y squid
+                    cat <<EOL > /etc/squid/squid.conf
+                    http_port 3128
+                    acl allowed_clients src ${ThreeTierVPC.CidrBlock} 
+                    http_access allow allowed_clients
+                    http_access deny all
+                    EOL
+                    systemctl restart squid
+                    systemctl enable squid
             Tags:
                 - Value: BastionHost
                   Key: Name
@@ -148,7 +161,14 @@ Resources:
                 - IpProtocol: tcp
                   FromPort: 22
                   ToPort: 22
-                  CidrIp: !Ref publicIPUserValue
+                  CidrIp: !Sub "${publicIPUserValue}/32"
+                - IpProtocol: tcp
+                  FromPort: 3128
+                  ToPort: 3128
+                  CidrIp: !GetAtt ThreeTierVPC.CidrBlock
+            Tags:
+                - Value: "Bastion SG"
+                  Key: Name
 
 Outputs:
     ThreeTierVpcIdSOut:
@@ -166,3 +186,33 @@ Outputs:
         Value: !Ref PublicSubnet2AZb
         Export:
             Name: PublicSubnet2AZbId
+
+    PrivateSubnet1AZaOut:
+        Description: "Private subnet for App tier AZ A, CIDR 10.0.3.0/24"
+        Value: !Ref AppPrivateSubnet1AZa
+        Export:
+            Name: AppSubnet1AZaId
+
+    PrivateSubnet2AZbOut:
+        Description: "Private subnet for App tier AZ B, CIDR 10.0.4.0/24"
+        Value: !Ref AppPrivateSubnet2AZb
+        Export:
+            Name: AppSubnet2AZbId
+
+    BastionHostSG:
+        Description: "Bastion Host Security Group ID"
+        Value: !Ref BastionSG
+        Export:
+            Name: BastionHostSG
+
+    BastionHostPrivateIP:
+        Description: "Private IP assigned to Bastion Host"
+        Value: !GetAtt BastionHost.PrivateIp
+        Export:
+            Name: BastionHostPrivateIP
+
+    BastionHostPublicIP:
+        Description: "Public IP assigned to Bastion Host"
+        Value: !GetAtt BastionHost.PublicIp
+        Export:
+            Name: BastionHostPublicIP
